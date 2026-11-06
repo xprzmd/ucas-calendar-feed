@@ -1,0 +1,51 @@
+name: Inspect API fields
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dump timetable field names
+        env:
+          SCHOOL_ACCOUNT: ${{ secrets.SCHOOL_ACCOUNT }}
+          SCHOOL_PASSWORD: ${{ secrets.SCHOOL_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import os, sys, datetime as dt
+          sys.path.insert(0, ".")
+          import fetch_ics as f
+
+          keys_hint = ("room", "place", "addr", "class", "location", "teach", "course")
+          uid, session = f.login(os.environ["SCHOOL_ACCOUNT"], os.environ["SCHOOL_PASSWORD"])
+          day = dt.date.today().strftime("%Y%m%d")
+
+          daily = f.post("course/get_stu_course_sched.action", [("id", uid), ("dateStr", day)], session)
+          rows = daily.get("result") or []
+          print("daily STATUS", daily.get("STATUS"), "rows", len(rows))
+          if rows:
+              print("daily keys:", sorted(rows[0].keys()))
+              for key, value in rows[0].items():
+                  if any(hint in key.lower() for hint in keys_hint):
+                      print("  ", key, "=", value)
+
+          weekly = f.post("course/get_stu_course_sched_week.action", [("id", uid), ("dateStr", day)], session)
+          days = weekly.get("result") or []
+          print("week STATUS", weekly.get("STATUS"), "days", len(days))
+          if days:
+              print("day keys:", sorted(days[0].keys()))
+              sched = days[0].get("schedData") or []
+              if sched:
+                  print("sched keys:", sorted(sched[0].keys()))
+                  for key, value in sched[0].items():
+                      if any(hint in key.lower() for hint in keys_hint):
+                          print("  ", key, "=", value)
+          PY
