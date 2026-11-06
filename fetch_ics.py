@@ -71,7 +71,7 @@ def parse_course(row, day):
         "schedule_id": str(row.get("id") or "").strip(),
         "uuid": str(row.get("uuid") or "").strip(),
         "name": name,
-        "teacher": teacher,
+        "teachers": {teacher} if teacher else set(),
         "location": location,
         "day": day,
         "begin": str(row.get("classBeginTime") or "").strip(),
@@ -108,10 +108,16 @@ def fetch_week(user_id, session, day):
 
 
 def merge(found, day, rows):
+    """The school returns one row per teacher for a shared time slot; keep one
+    event per slot and collect the teachers."""
     bucket = found.setdefault(day, {})
     for course in rows:
-        key = (course["schedule_id"], course["uuid"], course["begin"], course["name"])
-        bucket.setdefault(key, course)
+        key = (course["begin"], course["end"], course["name"], course["location"])
+        existing = bucket.get(key)
+        if existing:
+            existing["teachers"] |= course["teachers"]
+        else:
+            bucket[key] = course
 
 
 def collect(user_id, session, start, days):
@@ -217,9 +223,10 @@ def vevent(course, alarm_minutes):
     begin, end = times
     stamp = f"{begin:%Y%m%d}T{begin:%H%M%S}"
     finish = f"{end:%Y%m%d}T{end:%H%M%S}"
-    identity = "|".join([course["day"], course["schedule_id"], course["uuid"], course["begin"], course["name"]])
+    identity = "|".join([course["day"], course["begin"], course["end"], course["name"], course["location"]])
     uid = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:40]
-    description = "教师：%s" % course["teacher"] if course["teacher"] else ""
+    teachers = "、".join(sorted(course["teachers"]))
+    description = "教师：%s" % teachers if teachers else ""
     lines = [
         "BEGIN:VEVENT",
         "UID:%s@ucas-guoke" % uid,
@@ -283,10 +290,10 @@ def demo_courses():
     for offset in range(0, 14):
         day = today + dt.timedelta(days=offset)
         rows.append({"schedule_id": "1000001", "uuid": "", "name": "学术英语",
-                     "teacher": "示例教师", "location": "教一-101", "day": day.strftime("%Y%m%d"),
+                     "teachers": {"示例教师"}, "location": "教一-101", "day": day.strftime("%Y%m%d"),
                      "begin": "08:30", "end": "10:10"})
         rows.append({"schedule_id": "1000002", "uuid": "", "name": "科学研究方法",
-                     "teacher": "示例教师", "location": "教二-203", "day": day.strftime("%Y%m%d"),
+                     "teachers": {"示例教师"}, "location": "教二-203", "day": day.strftime("%Y%m%d"),
                      "begin": "13:30", "end": "15:10"})
     return rows
 
