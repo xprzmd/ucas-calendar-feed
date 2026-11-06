@@ -62,7 +62,8 @@ def parse_course(row, day):
     name = str(row.get("courseName") or "").strip() or "未命名课程"
     teacher = str(row.get("teacherName") or "").strip()
     location = ""
-    for key in ("classRoomName", "classroom", "classRoom", "address", "place", "room"):
+    for key in ("classroomName", "teachBuildName", "classRoomName", "classroom",
+                "classRoom", "address", "place", "room"):
         value = str(row.get(key) or "").strip()
         if value:
             location = value
