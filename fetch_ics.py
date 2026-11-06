@@ -317,7 +317,10 @@ def main():
             print(str(error), file=sys.stderr)
             return 1
         courses = []
+        start_key = start.strftime("%Y%m%d")
         for day in sorted(found):
+            if day < start_key:
+                continue
             courses.extend(found[day].values())
         courses.sort(key=lambda course: (course["day"], course["begin"], course["name"]))
         if not courses:
