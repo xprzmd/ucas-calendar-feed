@@ -1,0 +1,49 @@
+name: Inspect today
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compare daily and weekly rows
+        env:
+          SCHOOL_ACCOUNT: ${{ secrets.SCHOOL_ACCOUNT }}
+          SCHOOL_PASSWORD: ${{ secrets.SCHOOL_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import os, sys, datetime as dt
+          sys.path.insert(0, ".")
+          import fetch_ics as f
+
+          uid, session = f.login(os.environ["SCHOOL_ACCOUNT"], os.environ["SCHOOL_PASSWORD"])
+          today = dt.datetime.now(f.TZ).date()
+          print("today", today)
+
+          for offset in (0, 1):
+              day = (today + dt.timedelta(days=offset)).strftime("%Y%m%d")
+              daily = f.post("course/get_stu_course_sched.action", [("id", uid), ("dateStr", day)], session)
+              rows = daily.get("result") or []
+              print(f"daily {day}: STATUS={daily.get('STATUS')} rows={len(rows)}")
+              for row in rows:
+                  print("   ", row.get("classBeginTime"), "-", row.get("classEndTime"),
+                        "|", row.get("courseName"), "|", row.get("teacherName"), "|", row.get("classroomName"))
+
+          day = today.strftime("%Y%m%d")
+          weekly = f.post("course/get_stu_course_sched_week.action", [("id", uid), ("dateStr", day)], session)
+          for item in weekly.get("result") or []:
+              if f.normalize_day(item.get("dateStr")) != day:
+                  continue
+              print("weekly", day, "rows", len(item.get("schedData") or []))
+              for row in item.get("schedData") or []:
+                  print("   ", row.get("classBeginTime"), "-", row.get("classEndTime"),
+                        "|", row.get("courseName"), "|", row.get("teacherName"), "|", row.get("classroomName"))
+          PY
