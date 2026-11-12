@@ -30,6 +30,7 @@ jobs:
           SCHOOL_ACCOUNT: ${{ secrets.SCHOOL_ACCOUNT }}
           SCHOOL_PASSWORD: ${{ secrets.SCHOOL_PASSWORD }}
           FEED_DAYS: "180"
+          START_DATE: "2026-09-01"
           ALARM_MINUTES: "10"
         run: |
           mkdir -p public
