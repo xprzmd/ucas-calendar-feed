@@ -302,9 +302,21 @@ def demo_courses():
 def main():
     out = os.environ.get("OUT", "public/calendar.ics")
     days = int(os.environ.get("FEED_DAYS", "180"))
+    past = int(os.environ.get("PAST_DAYS", "180"))
     alarm = int(os.environ.get("ALARM_MINUTES", "10"))
     name = os.environ.get("CAL_NAME", "果壳课表")
     demo = "--demo" in sys.argv
+    today = dt.datetime.now(TZ).date()
+    start_env = os.environ.get("START_DATE", "").strip()
+    if start_env:
+        try:
+            start = dt.datetime.strptime(start_env, "%Y-%m-%d").date()
+        except ValueError:
+            print("START_DATE 需要 YYYY-MM-DD 格式。", file=sys.stderr)
+            return 2
+    else:
+        start = today - dt.timedelta(days=past)
+    stop = today + dt.timedelta(days=days)
 
     if demo:
         courses = demo_courses()
@@ -316,8 +328,7 @@ def main():
             return 2
         try:
             user_id, session = login(account, password)
-            start = dt.datetime.now(TZ).date()
-            found = collect(user_id, session, start, days)
+            found = collect(user_id, session, start, (stop - start).days)
         except urllib.error.URLError as error:
             print("无法连接学校服务：%s" % error.reason, file=sys.stderr)
             return 1
@@ -326,8 +337,9 @@ def main():
             return 1
         courses = []
         start_key = start.strftime("%Y%m%d")
+        stop_key = stop.strftime("%Y%m%d")
         for day in sorted(found):
-            if day < start_key:
+            if day < start_key or day > stop_key:
                 continue
             courses.extend(found[day].values())
         courses.sort(key=lambda course: (course["day"], course["begin"], course["name"]))
@@ -335,7 +347,7 @@ def main():
             print("未获取到任何课程，保留上一次发布的订阅内容。", file=sys.stderr)
             return 3
 
-    text = calendar(courses, name, alarm, days)
+    text = calendar(courses, name, alarm, (stop - start).days)
     path = os.path.abspath(out)
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as handle:
