@@ -31,7 +31,7 @@ jobs:
           SCHOOL_PASSWORD: ${{ secrets.SCHOOL_PASSWORD }}
           FEED_DAYS: "180"
           START_DATE: "2026-09-01"
-          ALARM_MINUTES: "10"
+          ALARM_MINUTES: "30"
         run: |
           mkdir -p public
           python3 fetch_ics.py --out public/calendar.ics

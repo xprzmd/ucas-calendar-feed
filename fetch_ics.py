@@ -240,7 +240,8 @@ def vevent(course, alarm_minutes):
         lines.append("LOCATION:%s" % escape(course["location"]))
     if description:
         lines.append("DESCRIPTION:%s" % escape(description))
-    lines += ["STATUS:CONFIRMED", "TRANSP:OPAQUE"]
+    lines += ["STATUS:CONFIRMED", "TRANSP:OPAQUE",
+              "X-APPLE-TRAVEL-ADVISORY-BEHAVIOR:DISABLED"]
     if alarm_minutes > 0:
         lines += [
             "BEGIN:VALARM",
@@ -303,7 +304,7 @@ def main():
     out = os.environ.get("OUT", "public/calendar.ics")
     days = int(os.environ.get("FEED_DAYS", "180"))
     past = int(os.environ.get("PAST_DAYS", "180"))
-    alarm = int(os.environ.get("ALARM_MINUTES", "10"))
+    alarm = int(os.environ.get("ALARM_MINUTES", "30"))
     name = os.environ.get("CAL_NAME", "果壳课表")
     demo = "--demo" in sys.argv
     today = dt.datetime.now(TZ).date()
